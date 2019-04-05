@@ -31,9 +31,9 @@ void * memset(void * ptr, int value, size_t num) {
  * -----------------------------
  * (size_t) chunk_size
  * -----------------------------
- * (void *) previous
- * -----------------------------
  * (void *) next
+ * -----------------------------
+ * (void *) previous
  * -----------------------------
  * (size_t) chunk_size
  * -----------------------------
@@ -41,47 +41,99 @@ void * memset(void * ptr, int value, size_t num) {
  * Free chunks storing size at the beginning and end is done for ease of
  * merging two adjacent free chunks. After chunks is freed its size does not
  * change, which imoses a minimal offset between starting pointers of two
- * adjacent chunks. Free chunks are organized into a double linked list for
- * ease of lookups.
+ * adjacent chunks. Free chunks are organized into a double linked list sorted
+ * by size (smaller to larger).
  */
 
 extern unsigned char __heap_base;
 
+/// Free chunk header
+///
+/// In full chunk this is followed by (optional) empty space and another size_t
+/// field containing chunk size
+typedef struct {
+  size_t size;
+  void * previous;
+  void * next;
+} free_chunk_header;
+
 /// Minimal offset between size of the current chunk and begining of the next
 /// one; accomodates two pointers needed for doubly-linked list of free chunks
-/// and extra size value placed at end of every free chunk
-const size_t min_chunk_offset = 2 * sizeof(void *) + sizeof(size_t);
+/// and one of the size values
+const size_t min_chunk_offset = sizeof(free_chunk_header);
+
+/// Attempt to allocate from the free list
+/// \param list pointer to the locaiton pointing to the beginning of the list
+/// \param size malloc size parameter
+/// \return 0 if no appropriately-sized free chunk
+void * free_list_alloc(free_chunk_header ** list, size_t size) {
+  if (!list || !(*list)) return 0;
+
+  // Free chunk
+  free_chunk_header * chunk = *list;
+  // Look for chunk big enough for our allocation
+  while (chunk && chunk->size < size) {
+    chunk = chunk->next;
+  }
+  // Found
+  if (chunk) {
+    // Remove from the free list
+    if (!chunk->next) { // Last
+      if (!chunk->previous) { // Only one
+        // Zero out free list pointer
+        *list = 0;
+      } else {
+        // TODO
+      }
+    } else {
+      if (!chunk->previous) { // First one
+        // TODO
+      } else {
+        // TODO
+      }
+    }
+    
+    // TODO split tail into a different chunk if it is big enough
+
+    // Set the size and return
+    chunk->size = size;
+    return (size_t *)chunk + 1;
+  }
+
+  // Not found
+  return 0;
+}
 
 export
 void * malloc(size_t size) {
   // FIXME alignment
 
+  // Start of the heap
   void * heap_ptr = &__heap_base;
 
   // Heap starts with a pointer to the free list
-  void * free_list_ptr = *((void **)heap_ptr);
-  // Followed by the first allocated chunk (if allocated)
-  void * current_chunk = (size_t*)heap_ptr + 1;
+  void * chunk = free_list_alloc(heap_ptr, size);
+  // Try to allocate on the free list first
+  if (chunk)
+    return chunk;
 
-  // No free list --
-  if (free_list_ptr == 0) {
-    // -- find the end of allocated memory
+  // No free list -- find the end of allocated memory
 
-    // Every chunk starts with its size (in bytes)
-    size_t chunk_size = *(size_t*)current_chunk;
-    size_t offset = (chunk_size < min_chunk_offset) ? min_chunk_offset : chunk_size;
-    while (chunk_size != 0) { // Loop through all used chunks
-      current_chunk = (unsigned char*)current_chunk + offset;
-      chunk_size = *(size_t*)current_chunk;
-      offset = (chunk_size < min_chunk_offset) ? min_chunk_offset : chunk_size;
-    }
+  // Free list pointer in the heap is followed by the first allocated chunk
+  chunk = (size_t*)heap_ptr + 1;
 
-    // Set the first free chunk up to be used
-    *((size_t*)current_chunk) = size;
-    return (void*)((size_t*)current_chunk + 1);
+  // Every chunk starts with its size (in bytes)
+  size_t chunk_size = *(size_t*)chunk;
+  size_t offset = (chunk_size < min_chunk_offset) ? min_chunk_offset : chunk_size;
+  while (chunk_size != 0) { // Loop through all used chunks
+    chunk = (unsigned char*)chunk + offset;
+    chunk_size = *(size_t*)chunk;
+    offset = (chunk_size < min_chunk_offset) ? min_chunk_offset : chunk_size;
   }
 
-  return &__heap_base;
+  // Set the first free chunk up to be used
+  *((size_t*)chunk) = size;
+  return (void*)((size_t*)chunk + 1);
 }
 
 export

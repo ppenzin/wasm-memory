@@ -11,6 +11,16 @@ function uchar2int32(arr, off) {
   return new Int32Array(u8arr.buffer)[0];
 }
 
+// Write a four byte integer into the byte array
+function write_int32(arr, off, val) {
+  var i32arr = new Int32Array([val]);
+  var u8arr = new Uint8Array(i32arr.buffer);
+  for (var i = 0; i < u8arr.length; ++i) {
+    arr[off + i] = u8arr[i];
+  }
+}
+
+/**** Allocate with empty heap ****/
 var ptr = instance.malloc(6);
 
 /* Expected heap (starts at __heap_base):
@@ -26,6 +36,7 @@ var passed = (uchar2int32(u8_data, instance.__heap_base) == 0)
           && (uchar2int32(u8_data, instance.__heap_base + 4) == 6)
           && (ptr == instance.__heap_base + 8);
 
+/**** Add one more alloc ****/
 ptr = instance.malloc(4);
 
 /* Expected heap (starts at __heap_base):
@@ -45,6 +56,26 @@ ptr = instance.malloc(4);
  * ------------------------
  */
 
+passed = passed && (uchar2int32(u8_data, instance.__heap_base) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 4) == 6)
+                && (uchar2int32(u8_data, instance.__heap_base + 16) == 4)
+                && (ptr == instance.__heap_base + 20);
+
+/**** Claim an empty chunk ****/
+
+// Make second chunk free
+write_int32(u8_data, instance.__heap_base + 20, 0); // Linked list ptr 1
+write_int32(u8_data, instance.__heap_base + 24, 0); // Linked list ptr 2
+// Second size value at the end of the chunk
+write_int32(u8_data, instance.__heap_base + 28,
+            uchar2int32(u8_data, instance.__heap_base + 16));
+
+// Set up pointer to the free list
+write_int32(u8_data, instance.__heap_base, instance.__heap_base + 16);
+
+ptr = instance.malloc(4); // Claim the same value
+
+// Same heap structure as the previous case 
 passed = passed && (uchar2int32(u8_data, instance.__heap_base) == 0)
                 && (uchar2int32(u8_data, instance.__heap_base + 4) == 6)
                 && (uchar2int32(u8_data, instance.__heap_base + 16) == 4)
