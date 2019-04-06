@@ -138,5 +138,18 @@ void * malloc(size_t size) {
 
 export
 void free(void * ptr) {
+  size_t * size_ptr = ptr - 1;
+  size_t next_offset = (*size_ptr < min_chunk_offset) ? min_chunk_offset : *size_ptr;
+  void * next_ptr = (unsigned char *)ptr + next_offset;
+
+  // TODO check if we can merge with the previous chunk
+
+  if (*((size_t *)next_ptr) == 0) {
+    // Tail chunk -- no allocated chunk after
+    *size_ptr = 0;
+    return;
+  } else {
+    // TODO put on free list or merge with next if it is free
+  }
 }
 
