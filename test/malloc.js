@@ -20,8 +20,14 @@ function write_int32(arr, off, val) {
   }
 }
 
+/**** Zero-size allocation ****/
+var ptr = instance.malloc(0);
+
+// Expect NULL
+var passed = (ptr == 0);
+
 /**** Allocate with empty heap ****/
-var ptr = instance.malloc(6);
+ptr = instance.malloc(6);
 
 /* Expected heap (starts at __heap_base):
  * -----------------------
@@ -32,9 +38,9 @@ var ptr = instance.malloc(6);
  * (void *) alloc == ptr
  * -----------------------
  */
-var passed = (uchar2int32(u8_data, instance.__heap_base) == 0)
-          && (uchar2int32(u8_data, instance.__heap_base + 4) == 6)
-          && (ptr == instance.__heap_base + 8);
+passed = passed && (uchar2int32(u8_data, instance.__heap_base) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 4) == 6)
+                && (ptr == instance.__heap_base + 8);
 
 /**** Add one more alloc ****/
 ptr = instance.malloc(4);

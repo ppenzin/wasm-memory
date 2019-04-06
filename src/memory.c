@@ -43,6 +43,8 @@ void * memset(void * ptr, int value, size_t num) {
  * change, which imoses a minimal offset between starting pointers of two
  * adjacent chunks. Free chunks are organized into a double linked list sorted
  * by size (smaller to larger).
+ * 
+ * Zero malloc returns NULL.
  */
 
 extern unsigned char __heap_base;
@@ -107,6 +109,9 @@ void * free_list_alloc(free_chunk_header ** list, size_t size) {
 export
 void * malloc(size_t size) {
   // FIXME alignment
+
+  if (size == 0)
+    return 0;
 
   // Start of the heap
   void * heap_ptr = &__heap_base;
