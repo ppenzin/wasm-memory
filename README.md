@@ -3,7 +3,9 @@ wasm-memory
 
 `libc` memory related routines for WebAssembly.
 
-Goal is to provide a quick interface to memory manipulation routines when targetting WebAssembly.
+## Usage
+
+The goal is to provide a simple interface to memory manipulation routines for C-family languages in WebAssembly. `wasm-memory` exports standard `libc` routines it implements to the host environment (most commonly JavaScript) -- which means consistent view of memory on both sides.
 
 ## Building
 
