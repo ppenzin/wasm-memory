@@ -3,7 +3,7 @@ var imports = {memory: new WebAssembly.Memory({initial:2})};
 // https://stackoverflow.com/questions/46159438/how-to-read-webassembly-file-it-javascript-from-the-local-file-system-with-nativ
 const module = new WebAssembly.Module(read('mem.wasm', 'binary'));
 const instance = new WebAssembly.Instance(module, { "env" : imports }).exports;
-var u8_data = new Uint8Array(imports["memory"]["buffer"]);
+var u8_data = new Uint8Array(imports.memory.buffer);
 
 // Convert 4 uint8 values to a single int32 value
 function uchar2int32(arr, off) {
@@ -81,11 +81,46 @@ write_int32(u8_data, instance.__heap_base, instance.__heap_base + 16);
 
 ptr = instance.malloc(4); // Claim the same value
 
-// Same heap structure as the previous case 
+// Same heap structure as the previous case
 passed = passed && (uchar2int32(u8_data, instance.__heap_base) == 0)
                 && (uchar2int32(u8_data, instance.__heap_base + 4) == 6)
                 && (uchar2int32(u8_data, instance.__heap_base + 16) == 4)
                 && (ptr == instance.__heap_base + 20);
+
+/**** Allocation crossing page boundary ****/
+
+// Start with an empty free list and one allocated chunk ending 4 bytes before
+// the end of the page (to accomodate size of next chunk)
+
+const page_size = 64 * 1024; // WebAssembly uses 64 KB pages
+write_int32(u8_data, instance.__heap_base, 0); // Empty free list
+write_int32(u8_data, instance.__heap_base + 4,
+            (u8_data.length - instance.__heap_base - 8)); // Leave 4 bytes at the end
+
+var mem_size = imports.memory.buffer.byteLength;
+
+ptr = instance.malloc(4);
+
+// Size change would invalidate the array
+u8_data = new Uint8Array(imports.memory.buffer);
+
+passed = passed && (ptr == mem_size) // Allocated right at the boundary
+                && (uchar2int32(u8_data, ptr - 4) == 4)
+                && (imports.memory.buffer.byteLength = mem_size + page_size);
+
+/**** Multi-page allocation ****/
+
+// Empty heap
+write_int32(u8_data, instance.__heap_base, 0);
+write_int32(u8_data, instance.__heap_base + 4, 0);
+
+ptr = instance.malloc(5 * page_size);
+
+u8_data = new Uint8Array(imports.memory.buffer);
+passed = passed && (uchar2int32(u8_data, instance.__heap_base) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 4) == 5*page_size)
+                && (ptr == instance.__heap_base + 8)
+                && (imports.memory.buffer.byteLength = 6 * page_size);
 
 if (passed)
   print("PASS");

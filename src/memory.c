@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <math.h>
 
 #define export __attribute__ ((visibility("default"))) 
 
@@ -63,6 +64,12 @@ typedef struct {
 /// one; accomodates two pointers needed for doubly-linked list of free chunks
 /// and one of the size values
 const size_t min_chunk_offset = sizeof(free_chunk_header);
+
+/// Minimal size of chunk (both size values and two pointers)
+const size_t min_chunk_alloc = min_chunk_offset + sizeof(size_t);
+
+/// WASM page size in bytes
+const size_t page_size = 64 * 1024;
 
 /// Attempt to allocate from the free list
 /// \param list pointer to the locaiton pointing to the beginning of the list
@@ -134,6 +141,18 @@ void * malloc(size_t size) {
     chunk = (unsigned char*)chunk + offset;
     chunk_size = *(size_t*)chunk;
     offset = (chunk_size < min_chunk_offset) ? min_chunk_offset : chunk_size;
+  }
+
+  // Check if we have enough memory left
+  size_t available = (size_t)(page_size * __builtin_wasm_memory_size(0)) - (size_t)chunk;
+  size_t needed = (size < min_chunk_alloc) ? min_chunk_alloc : size;
+
+  // Add memory
+  if (available < needed) {
+     size_t pages = ceil(1.0 * (needed - available) / page_size);
+     // Failed to allocate memory
+     if (__builtin_wasm_memory_grow(0, pages) == -1)
+       return 0;
   }
 
   // Set the first free chunk up to be used
