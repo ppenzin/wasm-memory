@@ -60,13 +60,13 @@ typedef struct {
   void * next;
 } free_chunk_header;
 
-/// Minimal offset between size of the current chunk and begining of the next
-/// one; accomodates two pointers needed for doubly-linked list of free chunks
-/// and one of the size values
-const size_t min_chunk_offset = sizeof(free_chunk_header);
-
-/// Minimal size of chunk (both size values and two pointers)
-const size_t min_chunk_alloc = min_chunk_offset + sizeof(size_t);
+/// Minimal offset between start of the current chunk and begining of the next
+/// one, including the size value
+///
+/// To support setting up the free chunks the offset has to accomodate a size
+/// value, two pointers needed for doubly-linked list of free chunks, and one
+/// more size value
+const size_t min_chunk_offset = sizeof(free_chunk_header) + sizeof(size_t);
 
 /// WASM page size in bytes
 const size_t page_size = 64 * 1024;
@@ -81,6 +81,7 @@ void * free_list_alloc(free_chunk_header ** list, size_t size) {
   // Free chunk
   free_chunk_header * chunk = *list;
   // Look for chunk big enough for our allocation
+  // TODO sizes can be safely increased to minimal effective size
   while (chunk && chunk->size < size) {
     chunk = chunk->next;
   }
@@ -145,7 +146,7 @@ void * malloc(size_t size) {
 
   // Check if we have enough memory left
   size_t available = (size_t)(page_size * __builtin_wasm_memory_size(0)) - (size_t)chunk;
-  size_t needed = (size < min_chunk_alloc) ? min_chunk_alloc : size;
+  size_t needed = (size < min_chunk_offset) ? min_chunk_offset : size;
 
   // Add memory
   if (available < needed) {
@@ -163,7 +164,7 @@ void * malloc(size_t size) {
 export
 void free(void * ptr) {
   size_t * size_ptr = ptr - 1;
-  size_t next_offset = (*size_ptr < min_chunk_offset) ? min_chunk_offset : *size_ptr;
+  size_t next_offset = (*size_ptr < min_chunk_offset) ? min_chunk_offset: *size_ptr;
   void * next_ptr = (unsigned char *)ptr + next_offset;
 
   // TODO check if we can merge with the previous chunk

@@ -10,14 +10,18 @@ project(wasm-memory C)
 
 set(JS_SHELL CACHE "JavaScript engine for use with tests" "")
 
-string(COMPARE EQUAL "${JS_ENGINE_FOR_TEST}" "" DISABLE_TESTS)
+string(COMPARE EQUAL "${JS_SHELL}" "" DISABLE_TESTS)
 
 set(CMAKE_C_FLAGS "--target=wasm32 -fvisibility=hidden ${CMAKE_C_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS "-Wl,--import-memory,--no-entry,--strip-all,--export-dynamic -nostdlib ${CMAKE_EXE_LINKER_FLAGS}")
+if (NOT DISABLE_TESTS)
+  set(CMAKE_EXE_LINKER_FLAGS "-Wl,--import-memory,--no-entry,--strip-all,--export-dynamic -nostdlib ${CMAKE_EXE_LINKER_FLAGS}")
+endif (NOT DISABLE_TESTS)
 
 set(WASM_MEM_MAIN_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/src)
-message(${WASM_MEM_MAIN_BUILD_DIR})
 
 add_subdirectory(src)
-add_subdirectory(test)
+
+if (NOT DISABLE_TESTS)
+  add_subdirectory(test)
+endif (NOT DISABLE_TESTS)
 
