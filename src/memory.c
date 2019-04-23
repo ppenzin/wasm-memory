@@ -96,7 +96,9 @@ void * free_list_alloc(free_chunk_header ** list, size_t size) {
         // Zero out free list pointer
         *list = 0;
       } else {
-        // TODO
+        // Cut the link to previous element
+        ((free_chunk_header *)chunk->previous)->next = 0;
+        chunk->previous = 0;
       }
     } else {
       if (!chunk->previous) { // First one
