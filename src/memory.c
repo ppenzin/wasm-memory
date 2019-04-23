@@ -60,13 +60,17 @@ typedef struct {
   void * next;
 } free_chunk_header;
 
+/// Minimal effective size is the size of the values that get added to a free
+/// chunk (effectively size of free_chunk_header above
+const size_t min_effective_size = sizeof(free_chunk_header);
+
 /// Minimal offset between start of the current chunk and begining of the next
 /// one, including the size value
 ///
 /// To support setting up the free chunks the offset has to accomodate a size
 /// value, two pointers needed for doubly-linked list of free chunks, and one
 /// more size value
-const size_t min_chunk_offset = sizeof(free_chunk_header) + sizeof(size_t);
+const size_t min_chunk_offset = min_effective_size + sizeof(size_t);
 
 /// WASM page size in bytes
 const size_t page_size = 64 * 1024;
@@ -81,8 +85,7 @@ void * free_list_alloc(free_chunk_header ** list, size_t size) {
   // Free chunk
   free_chunk_header * chunk = *list;
   // Look for chunk big enough for our allocation
-  // TODO sizes can be safely increased to minimal effective size
-  while (chunk && chunk->size < size) {
+  while (chunk && (chunk->size < min_effective_size ? min_effective_size : chunk->size) < size) {
     chunk = chunk->next;
   }
   // Found
