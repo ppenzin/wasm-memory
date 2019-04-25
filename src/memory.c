@@ -88,35 +88,34 @@ void * free_list_alloc(free_chunk_header ** list, size_t size) {
   while (chunk && (chunk->size < min_effective_size ? min_effective_size : chunk->size) < size) {
     chunk = chunk->next;
   }
-  // Found
-  if (chunk) {
-    // Remove from the free list
-    if (!chunk->next) { // Last
-      if (!chunk->previous) { // Only one
-        // Zero out free list pointer
-        *list = 0;
-      } else {
-        // Cut the link to previous element
-        ((free_chunk_header *)chunk->previous)->next = 0;
-        chunk->previous = 0;
-      }
-    } else {
-      if (!chunk->previous) { // First one
-        // TODO
-      } else {
-        // TODO
-      }
-    }
-    
-    // TODO split tail into a different chunk if it is big enough
-
-    // Set the size and return
-    chunk->size = size;
-    return (size_t *)chunk + 1;
-  }
 
   // Not found
-  return 0;
+  if (!chunk)
+    return 0;
+
+  // Found -- remove from the free list
+  if (!chunk->next) { // Last
+    if (!chunk->previous) { // Only one
+      // Zero out free list pointer
+      *list = 0;
+    } else {
+      // Cut the link to previous element
+      ((free_chunk_header *)chunk->previous)->next = 0;
+      chunk->previous = 0;
+    }
+  } else {
+    if (!chunk->previous) { // First one
+      // TODO
+    } else {
+      // TODO
+    }
+  }
+
+  // TODO split tail into a different chunk if it is big enough
+
+  // Set the size and return
+  chunk->size = size;
+  return (size_t *)chunk + 1;
 }
 
 export
