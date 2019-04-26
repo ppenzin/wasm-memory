@@ -237,9 +237,7 @@ write_int32(u8_data, instance.__heap_base + 52, 16);
 write_int32(u8_data, instance.__heap_base + 56, 20); // Used chunk
 write_int32(u8_data, instance.__heap_base + 80, 0); // End of allocated memory
 
-print("Start: " + instance.__heap_base);
 ptr = instance.malloc(15);
-print("End");
 
 /* Expected (starts at __heap_base):
  * ------------------------
@@ -273,7 +271,209 @@ passed = passed && (uchar2int32(u8_data, instance.__heap_base) == instance.__hea
                 && (uchar2int32(u8_data, instance.__heap_base + 36) == 15)
                 && (ptr == instance.__heap_base + 40)
                 && (uchar2int32(u8_data, instance.__heap_base + 56) == 20)
+                && (uchar2int32(u8_data, instance.__heap_base + 80) == 0);
+
+/**** Claim chunk at the head of free list ****/
+
+/* Set up (starts at __heap_base):
+ * ------------------------
+ * (void *) free list = __heap_base + 4
+ * ------------------------
+ * (size_t) chunk size = 16 (free chunk)
+ * ------------------------
+ * (void *) previous ptr = 0
+ * ------------------------
+ * (void *) next ptr = __heap_base + 40
+ * ------------------------
+ * + 4 bytes (to get to full 16 bytes)
+ * ------------------------
+ * (size_t) chunk size = 16
+ * ------------------------
+ * (size_t) chunk size = 12 (used chunk)
+ * ------------------------
+ * + 12 bytes
+ * ------------------------
+ * (size_t) chunk size = 16 (free chunk)
+ * ------------------------
+ * (void *) previous ptr = __heap_base + 4
+ * ------------------------
+ * (void *) next ptr = 0
+ * ------------------------
+ * + 4 bytes (to get to full 16 bytes)
+ * ------------------------
+ * (size_t) chunk size = 16
+ * ------------------------
+ * (size_t) chunk size = 20 (used chunk)
+ * ------------------------
+ */
+write_int32(u8_data, instance.__heap_base, instance.__heap_base + 4);
+write_int32(u8_data, instance.__heap_base + 4, 16); // Free chunk
+write_int32(u8_data, instance.__heap_base + 8, 0);
+write_int32(u8_data, instance.__heap_base + 12, instance.__heap_base + 40);
+write_int32(u8_data, instance.__heap_base + 20, 16);
+write_int32(u8_data, instance.__heap_base + 24, 12); // Used chunk
+write_int32(u8_data, instance.__heap_base + 40, 16); // Free chunk
+write_int32(u8_data, instance.__heap_base + 44, instance.__heap_base + 4);
+write_int32(u8_data, instance.__heap_base + 48, 0);
+write_int32(u8_data, instance.__heap_base + 56, 16);
+write_int32(u8_data, instance.__heap_base + 60, 20); // Used chunk
+write_int32(u8_data, instance.__heap_base + 84, 0); // End of allocated memory
+
+ptr = instance.malloc(15);
+
+/* Expected (starts at __heap_base):
+ * ------------------------
+ * (void *) free list = __heap_base + 40
+ * ------------------------
+ * (size_t) chunk size = 15 (Newly allocated chunk)
+ * ------------------------
+ * + 16 bytes <= ptr
+ * ------------------------
+ * (size_t) chunk size = 12 (used chunk)
+ * ------------------------
+ * + 12 bytes
+ * ------------------------
+ * (size_t) chunk size = 16 (free chunk)
+ * ------------------------
+ * (void *) previous ptr = 0
+ * ------------------------
+ * (void *) next ptr = 0
+ * ------------------------
+ * + 4 bytes (to get to full 16 bytes)
+ * ------------------------
+ * (size_t) chunk size = 16
+ * ------------------------
+ * (size_t) chunk size = 20 (used chunk)
+ * ------------------------
+ */
+passed = passed && (uchar2int32(u8_data, instance.__heap_base) == instance.__heap_base + 40)
+                && (uchar2int32(u8_data, instance.__heap_base + 4) == 15)
+                && (ptr == instance.__heap_base + 8)
+                && (uchar2int32(u8_data, instance.__heap_base + 24) == 12)
+                && (uchar2int32(u8_data, instance.__heap_base + 40) == 16)
+                && (uchar2int32(u8_data, instance.__heap_base + 44) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 48) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 56) == 16)
+                && (uchar2int32(u8_data, instance.__heap_base + 60) == 20)
+                && (uchar2int32(u8_data, instance.__heap_base + 84) == 0);
+
+/**** Claim chunk at the middle of free list ****/
+
+/* Set up (starts at __heap_base):
+ * ------------------------
+ * (void *) free list = __heap_base + 4
+ * ------------------------
+ * (size_t) chunk size = 12 (free chunk)
+ * ------------------------
+ * (void *) previous ptr = 0
+ * ------------------------
+ * (void *) next ptr = __heap_base + 36
+ * ------------------------
+ * (size_t) chunk size = 12
+ * ------------------------
+ * (size_t) chunk size = 12 (used chunk)
+ * ------------------------
+ * + 12 bytes
+ * ------------------------
+ * (size_t) chunk size = 16 (free chunk)
+ * ------------------------
+ * (void *) previous ptr = __heap_base + 4
+ * ------------------------
+ * (void *) next ptr = __heap_base + 72
+ * ------------------------
+ * + 4 bytes (to get to full 16 bytes)
+ * ------------------------
+ * (size_t) chunk size = 16
+ * ------------------------
+ * (size_t) chunk size = 12 (used chunk)
+ * ------------------------
+ * + 12 bytes
+ * ------------------------
+ * (size_t) chunk size = 16 (free chunk)
+ * ------------------------
+ * (void *) previous ptr = __heap_base + 36
+ * ------------------------
+ * (void *) next ptr = 0
+ * ------------------------
+ * + 4 bytes (to get to full 16 bytes)
+ * ------------------------
+ * (size_t) chunk size = 16
+ * ------------------------
+ * (size_t) chunk size = 20 (used chunk)
+ * ------------------------
+ */
+write_int32(u8_data, instance.__heap_base, instance.__heap_base + 4);
+write_int32(u8_data, instance.__heap_base + 4, 12); // Free chunk
+write_int32(u8_data, instance.__heap_base + 8, 0);
+write_int32(u8_data, instance.__heap_base + 12, instance.__heap_base + 36);
+write_int32(u8_data, instance.__heap_base + 16, 12);
+write_int32(u8_data, instance.__heap_base + 20, 12); // Used chunk
+write_int32(u8_data, instance.__heap_base + 36, 16); // Free chunk
+write_int32(u8_data, instance.__heap_base + 40, instance.__heap_base + 4);
+write_int32(u8_data, instance.__heap_base + 44, instance.__heap_base + 72);
+write_int32(u8_data, instance.__heap_base + 52, 16);
+write_int32(u8_data, instance.__heap_base + 56, 12); // Used chunk
+write_int32(u8_data, instance.__heap_base + 72, 16); // Free chunk
+write_int32(u8_data, instance.__heap_base + 76, instance.__heap_base + 36);
+write_int32(u8_data, instance.__heap_base + 80, 0);
+write_int32(u8_data, instance.__heap_base + 88, 16);
+write_int32(u8_data, instance.__heap_base + 92, 20); // Used chunk
+write_int32(u8_data, instance.__heap_base + 116, 0); // End of allocated memory
+
+ptr = instance.malloc(15);
+
+/* Expected (starts at __heap_base):
+ * ------------------------
+ * (void *) free list = __heap_base + 4
+ * ------------------------
+ * (size_t) chunk size = 12 (free chunk)
+ * ------------------------
+ * (void *) previous ptr = 0
+ * ------------------------
+ * (void *) next ptr = __heap_base + 72
+ * ------------------------
+ * (size_t) chunk size = 12
+ * ------------------------
+ * (size_t) chunk size = 12 (used chunk)
+ * ------------------------
+ * + 12 bytes
+ * ------------------------
+ * (size_t) chunk size = 15 (Newly used chunk)
+ * ------------------------
+ * + 16 bytes <= ptr
+ * ------------------------
+ * (size_t) chunk size = 12 (used chunk)
+ * ------------------------
+ * + 12 bytes
+ * ------------------------
+ * (size_t) chunk size = 16 (free chunk)
+ * ------------------------
+ * (void *) previous ptr = __heap_base + 4
+ * ------------------------
+ * (void *) next ptr = 0
+ * ------------------------
+ * + 4 bytes (to get to full 16 bytes)
+ * ------------------------
+ * (size_t) chunk size = 16
+ * ------------------------
+ * (size_t) chunk size = 20 (used chunk)
+ * ------------------------
+ */
+passed = passed && (uchar2int32(u8_data, instance.__heap_base) == instance.__heap_base + 4)
+                && (uchar2int32(u8_data, instance.__heap_base + 4) == 12)
+                && (uchar2int32(u8_data, instance.__heap_base + 8) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 12) == instance.__heap_base + 72)
+                && (uchar2int32(u8_data, instance.__heap_base + 16) == 12)
+                && (uchar2int32(u8_data, instance.__heap_base + 20) == 12)
+                && (uchar2int32(u8_data, instance.__heap_base + 36) == 15)
+                && (ptr == instance.__heap_base + 40)
+                && (uchar2int32(u8_data, instance.__heap_base + 56) == 12)
+                && (uchar2int32(u8_data, instance.__heap_base + 72) == 16)
+                && (uchar2int32(u8_data, instance.__heap_base + 76) == instance.__heap_base + 4)
                 && (uchar2int32(u8_data, instance.__heap_base + 80) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 88) == 16)
+                && (uchar2int32(u8_data, instance.__heap_base + 92) == 20)
+                && (uchar2int32(u8_data, instance.__heap_base + 116)== 0);
 
 /**** Allocation crossing page boundary ****/
 

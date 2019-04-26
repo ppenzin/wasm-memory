@@ -105,9 +105,11 @@ void * free_list_alloc(free_chunk_header ** list, size_t size) {
     }
   } else {
     if (!chunk->previous) { // First one
-      // TODO
+      *list = chunk->next;
+      ((free_chunk_header *)chunk->next)->previous = 0;
     } else {
-      // TODO
+      ((free_chunk_header *)chunk->previous)->next = chunk->next;
+      ((free_chunk_header *)chunk->next)->previous = chunk->previous;
     }
   }
 
