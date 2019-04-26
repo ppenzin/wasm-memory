@@ -5,7 +5,20 @@ wasm-memory
 
 ## Usage
 
-The goal is to provide a simple interface to memory manipulation routines for C-family languages in WebAssembly. `wasm-memory` exports standard `libc` routines it implements to the host environment (most commonly JavaScript) -- which means consistent view of memory on both sides.
+The goal is to provide a simple interface to memory manipulation routines for
+C-family languages in WebAssembly. `wasm-memory` exports standard `libc`
+routines it implements to the host environment (most commonly JavaScript) --
+which means consistent view of memory on both sides.
+
+For example, it is possible to invoke `malloc` from both wasm, using regular C
+or C++ syntax or APIs and from JavaScript when one needs to pass a pointer to
+WebAssembly as
+
+```
+  ptr = instance.malloc(sz);
+```
+
+Same applies to other memory management and manipulation routines.
 
 ## Building
 
