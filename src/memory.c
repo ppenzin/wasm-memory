@@ -43,7 +43,8 @@ void * memset(void * ptr, int value, size_t num) {
  * merging two adjacent free chunks. After chunks is freed its size does not
  * change, which imoses a minimal offset between starting pointers of two
  * adjacent chunks. Free chunks are organized into a double linked list sorted
- * by size (smaller to larger).
+ * by size (smaller to larger). Size value for the free chunks is promoted to
+ * the minimal phyisical size.
  * 
  * Zero malloc returns NULL.
  */
@@ -75,6 +76,18 @@ const size_t min_chunk_offset = min_effective_size + sizeof(size_t);
 /// WASM page size in bytes
 const size_t page_size = 64 * 1024;
 
+/// Find the first chunk that would be able to accomodate a particular size,
+/// assume that every size is accurate
+free_chunk_header * find_free_chunk(free_chunk_header * list, size_t size) {
+  free_chunk_header * chunk = list;
+  // Look for chunk big enough for the size
+  while (chunk && chunk->size < size) {
+    chunk = chunk->next;
+  }
+  return chunk;
+}
+
+
 /// Attempt to allocate from the free list
 /// \param list pointer to the locaiton pointing to the beginning of the list
 /// \param size malloc size parameter
@@ -82,12 +95,8 @@ const size_t page_size = 64 * 1024;
 void * free_list_alloc(free_chunk_header ** list, size_t size) {
   if (!list || !(*list)) return 0;
 
-  // Free chunk
-  free_chunk_header * chunk = *list;
-  // Look for chunk big enough for our allocation
-  while (chunk && (chunk->size < min_effective_size ? min_effective_size : chunk->size) < size) {
-    chunk = chunk->next;
-  }
+  // Find big enough free chunk
+  free_chunk_header * chunk = find_free_chunk(*list, size);
 
   // Not found
   if (!chunk)
@@ -169,17 +178,23 @@ void * malloc(size_t size) {
 
 export
 void free(void * ptr) {
-  size_t * size_ptr = ptr - 1;
-  size_t next_offset = (*size_ptr < min_chunk_offset) ? min_chunk_offset: *size_ptr;
-  void * next_ptr = (unsigned char *)ptr + next_offset;
+  if (!ptr) return; // FIXME error?
+
+  size_t * size_ptr = (size_t*)ptr - 1;
+
+  if (*size_ptr == 0) return; // FIXME error?
+
+  size_t effective_size = (*size_ptr < min_effective_size) ? min_effective_size: *size_ptr;
+  void * next_chunk_ptr = (unsigned char *)ptr + effective_size;
 
   // TODO check if we can merge with the previous chunk
 
-  if (*((size_t *)next_ptr) == 0) {
+  if (*((size_t *)next_chunk_ptr) == 0) {
     // Tail chunk -- no allocated chunk after
     *size_ptr = 0;
     return;
   } else {
+    *size_ptr = effective_size; // Promote chunk size to effective size
     // TODO put on free list or merge with next if it is free
   }
 }

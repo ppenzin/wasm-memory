@@ -26,19 +26,21 @@ function write_int32(arr, off, val) {
  * -----------------------
  * (void *) free list == 0
  * -----------------------
- * (size_t) chunk size = 16
+ * (size_t) chunk size = 8
  * -----------------------
  * (void *) alloc == ptr
  * -----------------------
  */
 write_int32(u8_data, instance.__heap_base, 0);
-write_int32(u8_data, instance.__heap_base + 4, 0);
+write_int32(u8_data, instance.__heap_base + 4, 8);
+write_int32(u8_data, instance.__heap_base + 20, 0);
 
 instance.free(instance.__heap_base + 8);
 
 // Expect the chunk would be deallocated without getting added to the free list
-var passed = (uchar2int32(u8_data, instance.__heap_base) == 0)
-          && (uchar2int32(u8_data, instance.__heap_base + 4) == 0);
+passed = passed && (uchar2int32(u8_data, instance.__heap_base) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 4) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 20) == 0);
 
 if (passed) {
   print("PASS");
