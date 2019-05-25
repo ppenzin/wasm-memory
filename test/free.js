@@ -30,6 +30,7 @@ function write_int32(arr, off, val) {
  * -----------------------
  * (void *) alloc == ptr
  * -----------------------
+ * (size_t) chunk size = 0 (empty)
  */
 write_int32(u8_data, instance.__heap_base, 0);
 write_int32(u8_data, instance.__heap_base + 4, 8);
@@ -38,9 +39,49 @@ write_int32(u8_data, instance.__heap_base + 20, 0);
 instance.free(instance.__heap_base + 8);
 
 // Expect the chunk would be deallocated without getting added to the free list
-passed = passed && (uchar2int32(u8_data, instance.__heap_base) == 0)
-                && (uchar2int32(u8_data, instance.__heap_base + 4) == 0)
-                && (uchar2int32(u8_data, instance.__heap_base + 20) == 0);
+var passed = (uchar2int32(u8_data, instance.__heap_base) == 0)
+             && (uchar2int32(u8_data, instance.__heap_base + 4) == 0)
+             && (uchar2int32(u8_data, instance.__heap_base + 20) == 0);
+
+/**** Free a non-tail chunk ****/
+
+/* Set up (start at __heap_base)
+ * -----------------------
+ * (void *) free list == 0
+ * -----------------------
+ * (size_t) chunk size = 8
+ * -----------------------
+ * (void *) alloc == ptr
+ * -----------------------
+ * (size_t) chunk size = 16
+ */
+write_int32(u8_data, instance.__heap_base, 0);
+write_int32(u8_data, instance.__heap_base + 4, 8);
+write_int32(u8_data, instance.__heap_base + 20, 16);
+
+instance.free(instance.__heap_base + 8);
+
+/* Expected (start at __heap_base)
+ * -----------------------
+ * (void *) free list == __heap_base + 4
+ * -----------------------
+ * (size_t) chunk size = 12
+ * -----------------------
+ * (void *) previous ptr = 0
+ * -----------------------
+ * (void *) next ptr = 0
+ * -----------------------
+ * (size_t) chunk size = 12
+ * -----------------------
+ * (size_t) chunk size = 16
+ */
+passed = passed && (uchar2int32(u8_data, instance.__heap_base) == instance.__heap_base + 4)
+                && (uchar2int32(u8_data, instance.__heap_base + 4) == 12)
+                && (uchar2int32(u8_data, instance.__heap_base + 8) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 12) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 16) == 12)
+                && (uchar2int32(u8_data, instance.__heap_base + 20) == 16);
+
 
 if (passed) {
   print("PASS");

@@ -184,6 +184,7 @@ void free(void * ptr) {
 
   if (*size_ptr == 0) return; // FIXME error?
 
+  free_chunk_header ** list = (void*)&__heap_base;
   size_t effective_size = (*size_ptr < min_effective_size) ? min_effective_size: *size_ptr;
   void * next_chunk_ptr = (unsigned char *)ptr + effective_size;
 
@@ -194,8 +195,22 @@ void free(void * ptr) {
     *size_ptr = 0;
     return;
   } else {
-    *size_ptr = effective_size; // Promote chunk size to effective size
-    // TODO put on free list or merge with next if it is free
+    free_chunk_header * hdr = (void*)size_ptr;
+    // Promote chunk size to effective size and duplicate at the end
+    *((size_t *)next_chunk_ptr - 1) = hdr->size = effective_size;
+    hdr->previous = hdr->next =  0;
+
+    // FIXME Merge with adjacent chunk if that is free
+
+    // Find first free chunk of the same or greater size
+    free_chunk_header * next = find_free_chunk(*list, effective_size);
+
+    if (!next) { // First or smallest chunk
+      hdr->next = *list;
+      *list = hdr;
+    } else {
+      // TODO
+    }
   }
 }
 
