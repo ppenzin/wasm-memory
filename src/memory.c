@@ -1,5 +1,9 @@
 #include <stddef.h>
-#include <math.h>
+
+// FIXME ceiling function availability
+// Used to include math.h for the definition, relying on Clang to provide a
+// builtin (not ideal solution)
+double ceil(double);
 
 #define export __attribute__ ((visibility("default"))) 
 
