@@ -82,6 +82,124 @@ passed = passed && (uchar2int32(u8_data, instance.__heap_base) == instance.__hea
                 && (uchar2int32(u8_data, instance.__heap_base + 16) == 12)
                 && (uchar2int32(u8_data, instance.__heap_base + 20) == 16);
 
+/**** Insert into free list ****/
+
+/* Set up (start at __heap_base)
+ * -----------------------
+ * (void *) free list == __heap_base + 4
+ * -----------------------
+ * (size_t) chunk size = 12 -- free chunk 0
+ * -----------------------
+ * (void *) previous ptr = 0
+ * -----------------------
+ * (void *) next ptr = __heap_base + 36
+ * -----------------------
+ * (size_t) chunk size = 12
+ * -----------------------
+ * (size_t) chunk size = 12 -- used chunk (prevent merging)
+ * -----------------------
+ * 12 byte alloc
+ * -----------------------
+ * (size_t) chunk size = 16 -- free chunk 1
+ * -----------------------
+ * (void *) previous ptr = __heap_base + 4
+ * -----------------------
+ * (void *) next ptr = 0
+ * -----------------------
+ * 4 bytes empty
+ * -----------------------
+ * (size_t) chunk size = 16
+ * -----------------------
+ * (size_t) chunk size = 12 -- used chunk (prevent merging)
+ * -----------------------
+ * 12 byte alloc
+ * -----------------------
+ * (size_t) chunk size = 16 -- chunk to deallocate
+ * -----------------------
+ * 16 byte alloc
+ * -----------------------
+ * (size_t) chunk size = 12
+ */
+write_int32(u8_data, instance.__heap_base, instance.__heap_base + 4);
+// Free chunk
+write_int32(u8_data, instance.__heap_base + 4, 12);
+write_int32(u8_data, instance.__heap_base + 8, 0);
+write_int32(u8_data, instance.__heap_base + 12, instance.__heap_base + 36);
+write_int32(u8_data, instance.__heap_base + 16, 12);
+// Used chunk
+write_int32(u8_data, instance.__heap_base + 20, 12);
+// Free chunk
+write_int32(u8_data, instance.__heap_base + 36, 16);
+write_int32(u8_data, instance.__heap_base + 40, instance.__heap_base + 4);
+write_int32(u8_data, instance.__heap_base + 44, 0);
+write_int32(u8_data, instance.__heap_base + 52, 16);
+// Used chunk
+write_int32(u8_data, instance.__heap_base + 56, 12);
+// Used chunk to deallocate
+write_int32(u8_data, instance.__heap_base + 72, 16);
+// One more used chunk
+write_int32(u8_data, instance.__heap_base + 92, 12);
+
+instance.free(instance.__heap_base + 76);
+
+/* Expected (start at __heap_base)
+ * -----------------------
+ * (void *) free list == __heap_base + 4
+ * -----------------------
+ * (size_t) chunk size = 12 -- free chunk 0
+ * -----------------------
+ * (void *) previous ptr = 0
+ * -----------------------
+ * (void *) next ptr = __heap_base + 76
+ * -----------------------
+ * (size_t) chunk size = 12
+ * -----------------------
+ * (size_t) chunk size = 12 -- used chunk (prevent merging)
+ * -----------------------
+ * 12 byte alloc
+ * -----------------------
+ * (size_t) chunk size = 16 -- free chunk 2
+ * -----------------------
+ * (void *) previous ptr = __heap_base + 76
+ * -----------------------
+ * (void *) next ptr = 0
+ * -----------------------
+ * 4 bytes empty
+ * -----------------------
+ * (size_t) chunk size = 16
+ * -----------------------
+ * (size_t) chunk size = 12 -- used chunk (prevent merging)
+ * -----------------------
+ * 12 byte alloc
+ * -----------------------
+ * (size_t) chunk size = 16 -- free chunk 1
+ * -----------------------
+ * (void *) previous ptr = __heap_base + 4
+ * -----------------------
+ * (void *) next ptr = __heap_base + 36
+ * -----------------------
+ * 4 bytes empty
+ * -----------------------
+ * (size_t) chunk size = 16
+ * -----------------------
+ * (size_t) chunk size = 12
+ */
+passed = passed && (uchar2int32(u8_data, instance.__heap_base) == instance.__heap_base + 4)
+                && (uchar2int32(u8_data, instance.__heap_base + 4) == 12)
+                && (uchar2int32(u8_data, instance.__heap_base + 8) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 12) == instance.__heap_base + 72)
+                && (uchar2int32(u8_data, instance.__heap_base + 16) == 12)
+                && (uchar2int32(u8_data, instance.__heap_base + 20) == 12)
+                && (uchar2int32(u8_data, instance.__heap_base + 36) == 16)
+                && (uchar2int32(u8_data, instance.__heap_base + 40) == instance.__heap_base + 72)
+                && (uchar2int32(u8_data, instance.__heap_base + 44) == 0)
+                && (uchar2int32(u8_data, instance.__heap_base + 52) == 16)
+                && (uchar2int32(u8_data, instance.__heap_base + 56) == 12)
+                && (uchar2int32(u8_data, instance.__heap_base + 72) == 16)
+                && (uchar2int32(u8_data, instance.__heap_base + 76) == instance.__heap_base + 4)
+                && (uchar2int32(u8_data, instance.__heap_base + 80) == instance.__heap_base + 36)
+                && (uchar2int32(u8_data, instance.__heap_base + 88) == 16)
+                && (uchar2int32(u8_data, instance.__heap_base + 92) == 12);
 
 if (passed) {
   print("PASS");

@@ -198,23 +198,27 @@ void free(void * ptr) {
     // Tail chunk -- no allocated chunk after
     *size_ptr = 0;
     return;
-  } else {
-    free_chunk_header * hdr = (void*)size_ptr;
-    // Promote chunk size to effective size and duplicate at the end
-    *((size_t *)next_chunk_ptr - 1) = hdr->size = effective_size;
-    hdr->previous = hdr->next =  0;
-
-    // FIXME Merge with adjacent chunk if that is free
-
-    // Find first free chunk of the same or greater size
-    free_chunk_header * next = find_free_chunk(*list, effective_size);
-
-    if (!next) { // First or smallest chunk
-      hdr->next = *list;
-      *list = hdr;
-    } else {
-      // TODO
-    }
   }
+
+  free_chunk_header * hdr = (void*)size_ptr;
+  // Promote chunk size to effective size and duplicate size at the end
+  *((size_t *)next_chunk_ptr - 1) = hdr->size = effective_size;
+  hdr->previous = hdr->next =  0;
+
+  // FIXME Merge with adjacent chunk if that is free
+
+  // Find first free chunk of the same or greater size
+  free_chunk_header * next = find_free_chunk(*list, effective_size);
+
+  if (!next) { // First or smallest chunk
+    hdr->next = *list;
+    *list = hdr;
+  } else {
+    hdr->next = next;
+    hdr->previous = next->previous;
+    ((free_chunk_header *)hdr->previous)->next = hdr;
+    next->previous = hdr;
+  }
+
 }
 
