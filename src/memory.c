@@ -208,22 +208,30 @@ void free(void * ptr) {
   // FIXME Merge with adjacent chunk if that is free
 
   // Find first free chunk of the same or greater size
-  free_chunk_header * next = find_free_chunk(*list, effective_size);
+  free_chunk_header * chunk = *list;
+  free_chunk_header * last = 0;
 
-  // FIXME tail chunk (currently next == NULL && *list != NULL)
+  while (chunk && chunk->size < effective_size) {
+    if (chunk->next == 0)
+      last = chunk;
+    chunk = chunk->next;
+  }
 
-  if (next == *list) { // First or smallest chunk
-    hdr->next = *list;
+  if (chunk == *list) { // First or smallest chunk
+    hdr->next= *list;
     *list = hdr;
     if (hdr->next)
       ((free_chunk_header *)hdr->next)->previous = hdr;
+  } else if (!chunk) { // Append at the end
+    hdr->previous = last;
+    last->next = hdr;
   } else {
-    hdr->next = next;
-    hdr->previous = next->previous;
+    hdr->next = chunk;
+    hdr->previous = chunk->previous;
     if (hdr->previous)
       ((free_chunk_header *)hdr->previous)->next = hdr;
-    next->previous = hdr;
-    if (next == *list)
+    chunk->previous = hdr;
+    if (chunk == *list)
       *list = hdr;
   }
 
