@@ -8,7 +8,7 @@ project(wasm-memory C)
 
 ## TODO check --target=wasm32
 
-set(JS_SHELL CACHE "JavaScript engine for use with tests" "")
+set(JS_SHELL CACHE STRING "JavaScript engine for use with tests" "")
 
 string(COMPARE EQUAL "${JS_SHELL}" "" DISABLE_TESTS)
 
